@@ -1,0 +1,15 @@
+.bgimg{
+    position: relative;
+  }
+  .ibtn{
+    position: absolute;
+    top: 30%;
+    left: 42%;
+  }
+  .ibtn .btn{
+    width: 200px;
+    height: 50px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+  }

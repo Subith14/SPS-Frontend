@@ -1,0 +1,28 @@
+.box{
+    display: grid;
+    grid-template-columns: repeat(2,10fr);
+    text-decoration: none; 
+    color: white;
+    
+}
+.list{
+    margin: 10px;
+    padding: 10px;
+    background-color: rgb(173, 130, 173);
+    box-shadow: rgba(255, 255, 255, 0.35) 0px 5px 15px;
+    border-radius: 10px;
+    
+}
+.data{
+    height: 423px;
+}
+.history{
+    margin-left: 1300px;
+}
+.game-history,.game-container{
+    background-image: url(https://c4.wallpaperflare.com/wallpaper/674/457/195/hands-minimalistic-paper-rock-wallpaper-preview.jpg);
+    background-size: contain;
+    background-position: center;
+    
+}
+
