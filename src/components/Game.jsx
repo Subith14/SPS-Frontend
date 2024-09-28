@@ -71,7 +71,7 @@ const Game = () => {
   const saveGame = useCallback(async () => {
     const finalGameData = { player1, player2, rounds, finalWinner };
     try {
-      await axios.post('http://localhost:5000/api/save-game', finalGameData);
+      await axios.post('https://backendgame.onrender.com/api/save-game', finalGameData);
       alert('Game saved successfully!');
     } catch (error) {
       alert('Error saving game:', error);

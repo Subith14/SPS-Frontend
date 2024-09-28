@@ -10,7 +10,7 @@ const GameHistory = () => {
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/games');
+        const response = await axios.get('https://backendgame.onrender.com/api/games');
         console.log(response.data);
         
         setGames(response.data);
