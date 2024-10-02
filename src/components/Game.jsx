@@ -1,20 +1,76 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useReducer, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import './game.css'
+import './game.css';
 import { Link } from 'react-router-dom';
+import toast, { Toaster } from 'react-hot-toast';
 
 
+
+
+
+
+
+// Reducer function to handle state transitions
+const gameReducer = (state, action) => {
+  switch (action.type) {
+    case 'SET_PLAYER_NAME':
+      return {
+        ...state,
+        [action.payload.player]: action.payload.name,
+      };
+    case 'SET_CHOICE':
+      return {
+        ...state,
+        [action.payload.player]: action.payload.choice,
+      };
+    case 'UPDATE_SCORE':
+      return {
+        ...state,
+        score: {
+          ...state.score,
+          [action.payload.winner]: state.score[action.payload.winner] + 1,
+        },
+      };
+    case 'ADD_ROUND':
+      return {
+        ...state,
+        rounds: [...state.rounds, action.payload],
+      };
+    case 'INCREMENT_ROUND':
+      return {
+        ...state,
+        round: state.round + 1,
+      };
+    case 'SET_FINAL_WINNER':
+      return {
+        ...state,
+        finalWinner: action.payload,
+        gameOver: true,
+      };
+    case 'RESET_GAME':
+      return initialState;
+    default:
+      return state;
+  }
+};
+
+// Initial state for the game
+const initialState = {
+  player1: '',
+  player2: '',
+  player1Choice: null,
+  player2Choice: null,
+  round: 1,
+  rounds: [],
+  score: { player1: 0, player2: 0 },
+  finalWinner: '',
+  gameOver: false,
+};
 
 const Game = () => {
-  const [player1, setPlayer1] = useState('');
-  const [player2, setPlayer2] = useState('');
-  const [player1Choice, setPlayer1Choice] = useState(null);
-  const [player2Choice, setPlayer2Choice] = useState(null);
-  const [round, setRound] = useState(1);
-  const [rounds, setRounds] = useState([]);
-  const [score, setScore] = useState({ player1: 0, player2: 0 });
-  const [finalWinner, setFinalWinner] = useState('');
-  const [gameOver, setGameOver] = useState(false);  
+  const [state, dispatch] = useReducer(gameReducer, initialState);
+
+  const { player1, player2, player1Choice, player2Choice, round, rounds, score, finalWinner, gameOver } = state;
 
   const choices = ['Stone', 'Paper', 'Scissors'];
 
@@ -30,114 +86,104 @@ const Game = () => {
     return 'Player 2';
   };
 
-  const playRound = () => {
-    if (round > 6) return;  
+  const playRound = useCallback(() => {
+    if (round > 6) return;
 
     const winner = determineWinner(player1Choice, player2Choice);
 
     if (winner === 'Player 1') {
-      setScore((prevScore) => ({ ...prevScore, player1: prevScore.player1 + 1 }));
+      dispatch({ type: 'UPDATE_SCORE', payload: { winner: 'player1' } });
     } else if (winner === 'Player 2') {
-      setScore((prevScore) => ({ ...prevScore, player2: prevScore.player2 + 1 }));
+      dispatch({ type: 'UPDATE_SCORE', payload: { winner: 'player2' } });
     }
 
-    const roundWinner = winner === 'Player 1' ? player1 : (winner === 'Player 2' ? player2 : 'Tie');
+    const roundWinner = winner === 'Player 1' ? player1 : winner === 'Player 2' ? player2 : 'Tie';
 
-    const newRound = { 
-      roundNumber: round, 
-      player1Choice, 
-      player2Choice, 
-      winner: roundWinner // Save the winner's name or "Tie"
-    };
-    
-    setRounds((prevRounds) => [...prevRounds, newRound]);
+    dispatch({
+      type: 'ADD_ROUND',
+      payload: {
+        roundNumber: round,
+        player1Choice,
+        player2Choice,
+        winner: roundWinner, // Save the winner's name or "Tie"
+      },
+    });
 
     if (round < 6) {
-      setRound(round + 1);
+      dispatch({ type: 'INCREMENT_ROUND' });
     } else {
-      setGameOver(true);
-      // Determine the final winner or tie
-      if (score.player1 === score.player2) {
-        setFinalWinner('Tie');
-      } else {
-        setFinalWinner(score.player1 > score.player2 ? player1 : player2);
-      }
+      dispatch({ type: 'SET_FINAL_WINNER', payload: score.player1 === score.player2 ? 'Tie' : score.player1 > score.player2 ? player1 : player2 });
     }
 
-    setPlayer1Choice(null);
-    setPlayer2Choice(null);
-  };
+    dispatch({ type: 'SET_CHOICE', payload: { player: 'player1Choice', choice: null } });
+    dispatch({ type: 'SET_CHOICE', payload: { player: 'player2Choice', choice: null } });
+  }, [player1Choice, player2Choice, round, score, player1, player2]);
 
   const saveGame = useCallback(async () => {
     const finalGameData = { player1, player2, rounds, finalWinner };
     try {
-      await axios.post('https://backendgame.onrender.com/api/save-game', finalGameData);
-      alert('Game saved successfully!');
-    } catch (error) {
-      alert('Error saving game:', error);
+      await axios.post('http://localhost:5000/api/save-game', finalGameData);
+      toast.success('Game saved..')
+     } catch (error) {
+      toast.error('Error saving game:', error);
     }
-  }, [player1, player2, rounds, finalWinner]);  // Dependencies for saveGame
+  }, [player1, player2, rounds, finalWinner]);
 
   useEffect(() => {
     if (gameOver) {
       saveGame();
     }
-  }, [gameOver, saveGame]); 
+  }, [gameOver, saveGame]);
 
-  
-
-  // Reset the game state for a new game
   const startNewGame = () => {
-    setPlayer1('');
-    setPlayer2('');
-    setPlayer1Choice(null);
-    setPlayer2Choice(null);
-    setRound(1);
-    setRounds([]);
-    setScore({ player1: 0, player2: 0 });
-    setFinalWinner('');
-    setGameOver(false);
+    dispatch({ type: 'RESET_GAME' });
   };
 
-  // Function to handle choice selection with player name validation
   const handleChoiceSelection = (player, choice) => {
     if (!player1 || !player2) {
-      alert('Please fill the player names before making a choice!');
+      
+      toast.error('Please fill in player names before making a choice!');
       return;
     }
+    dispatch({ type: 'SET_CHOICE', payload: { player: player === 'Player 1' ? 'player1Choice' : 'player2Choice', choice } });
+  };
 
-    if (player === 'Player 1') {
-      setPlayer1Choice(choice);
-    } else if (player === 'Player 2') {
-      setPlayer2Choice(choice);
-    }
+  const handleNameChange = (player, name) => {
+    dispatch({ type: 'SET_PLAYER_NAME', payload: { player, name } });
   };
 
   return (
     <div className="game-container">
-
-      <div className='history '>
-      <Link className='btn btn-danger mt-2' to={'/history'}>Game History</Link>
+               <Toaster
+  position="top-center"
+  reverseOrder={false}
+/>
+      <div className='history'>
+        <Link className='btn btn-danger mt-2' to={'/history'}>Game History</Link>
       </div>
-      
 
-      {/* Conditionally render round number or game over message */}
-      {gameOver ? <h2 className='text-center fw-bold my-5'>Game Over!</h2> : <h2 className='text-center fw-bold my-4'>Round {round}</h2>}
+      {gameOver ? (
+        <h2 className='text-center fw-bold my-5'>Game Over!</h2>
+      ) : (
+        <h2 className='text-center fw-bold my-4'>Round {round}</h2>
+      )}
 
       {!gameOver && (
         <>
           <div className='d-flex justify-content-center'>
-            <input className='form-control w-25 mx-3' 
-              type="text" 
-              placeholder="Player 1 Name" 
-              value={player1} 
-              onChange={(e) => setPlayer1(e.target.value)} 
+            <input
+              className='form-control w-25 mx-3'
+              type="text"
+              placeholder="Player 1 Name"
+              value={player1}
+              onChange={(e) => handleNameChange('player1', e.target.value)}
             />
-            <input className='form-control w-25 '
-              type="text" 
-              placeholder="Player 2 Name" 
-              value={player2} 
-              onChange={(e) => setPlayer2(e.target.value)} 
+            <input
+              className='form-control w-25'
+              type="text"
+              placeholder="Player 2 Name"
+              value={player2}
+              onChange={(e) => handleNameChange('player2', e.target.value)}
             />
           </div>
 
@@ -145,7 +191,10 @@ const Game = () => {
             <div>
               <h3 className='text-center mb-4'>Player 1: <span className='text-warning fw-bold'>{player1}</span></h3>
               {choices.map((choice) => (
-                <button className='btn btn-primary mx-2' key={choice} onClick={() => handleChoiceSelection('Player 1', choice)}>
+                <button
+                  className='btn btn-primary mx-2'
+                  key={choice}
+                  onClick={() => handleChoiceSelection('Player 1', choice)}>
                   {choice}
                 </button>
               ))}
@@ -153,58 +202,60 @@ const Game = () => {
             <div>
               <h3 className='text-center mb-4'>Player 2: <span className='text-warning fw-bold'>{player2}</span></h3>
               {choices.map((choice) => (
-                <button className='btn btn-primary mx-2' key={choice} onClick={() => handleChoiceSelection('Player 2', choice)}>
+                <button
+                  className='btn btn-primary mx-2'
+                  key={choice}
+                  onClick={() => handleChoiceSelection('Player 2', choice)}>
                   {choice}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Play round button */}
-         <div className='d-flex justify-content-center'>
-         {player1Choice && player2Choice && (
-            <button className='btn btn-success' onClick={playRound}>Play Round</button>
-          )}
-         </div>
+          <div className='d-flex justify-content-center'>
+            {player1Choice && player2Choice && (
+              <button className='btn btn-success' onClick={playRound}>
+                Play Round
+              </button>
+               
+            )}
+   
+          </div>
         </>
       )}
 
-      {/* Display final winner or tie when the game is over */}
       {gameOver && (
         <h2 className='text-center'>
-        {score.player1 === score.player2
-          ? 'The Game is a Tie!'
-          : (
+          {finalWinner === "Tie" ? (
+            'The Game is a Tie!'
+          ) : (
             <>
               <span className='text-warning fw-bold fs-1'>{finalWinner}</span> Wins the Game!
             </>
           )}
-      </h2>
-      
+        </h2>
       )}
 
-      {/* Display the score */}
       <div className='mb-5'>
         <h2 className='text-center my-4 fw-bold'>Score</h2>
         <div className='d-flex justify-content-around my-5'>
-         <div>
-         <p className='fw-bold'>Player 1</p>
-         <h3 className='fw-bold '>{player1}: <span className='text-danger'>{score.player1}</span></h3>
-         </div>
-        <div>
-        <p className='fw-bold'>Player 2</p>
-        <h3 className='fw-bold'>{player2}: <span className='text-danger'>{score.player2}</span></h3>
-        </div>
+          <div>
+            <p className='fw-bold'>Player 1</p>
+            <h3 className='fw-bold '>{player1}: <span className='text-danger'>{score.player1}</span></h3>
+          </div>
+          <div>
+            <p className='fw-bold'>Player 2</p>
+            <h3 className='fw-bold'>{player2}: <span className='text-danger'>{score.player2}</span></h3>
+          </div>
         </div>
       </div>
 
-      {/* New Game Button: appears when the game is over */}
       <div className='newgame d-flex justify-content-center'>
-      {gameOver && (
-        <button onClick={startNewGame} className="new-game-button btn btn-success mb-5 mt-5">
-          Start New Game
-        </button>
-      )}
+        {gameOver && (
+          <button onClick={startNewGame} className="new-game-button btn btn-success mb-5 mt-5">
+            Start New Game
+          </button>
+        )}
       </div>
     </div>
   );

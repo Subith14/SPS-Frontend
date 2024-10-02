@@ -10,7 +10,7 @@ const GameHistory = () => {
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const response = await axios.get('https://backendgame.onrender.com/api/games');
+        const response = await axios.get('http://localhost:5000/api/games');
         console.log(response.data);
         
         setGames(response.data);
@@ -35,7 +35,7 @@ const GameHistory = () => {
               <h3>Game: {index+1}</h3>
               <p>Player 1: {game.player1}</p>
               <p>Player 2: {game.player2}</p>
-              <p>Final Winner: {game.finalWinner}</p>
+              <p >Final Winner: {game.final_winner !=='Tie'? game.final_winner:'MATCH DRAW'}</p>
               <p>Rounds:</p>
               <ul>
                 {game.rounds.map((round, i) => (
