@@ -4,12 +4,6 @@ import './game.css';
 import { Link } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
 
-
-
-
-
-
-
 // Reducer function to handle state transitions
 const gameReducer = (state, action) => {
   switch (action.type) {
@@ -46,6 +40,7 @@ const gameReducer = (state, action) => {
         ...state,
         finalWinner: action.payload,
         gameOver: true,
+        finalWin: action.payload,  // Store final winner
       };
     case 'RESET_GAME':
       return initialState;
@@ -64,18 +59,19 @@ const initialState = {
   rounds: [],
   score: { player1: 0, player2: 0 },
   finalWinner: '',
+  finalWin: '',  // Add this to initialState
   gameOver: false,
 };
 
 const Game = () => {
   const [state, dispatch] = useReducer(gameReducer, initialState);
 
-  const { player1, player2, player1Choice, player2Choice, round, rounds, score, finalWinner, gameOver } = state;
+  const { player1, player2, player1Choice, player2Choice, round, rounds, score, finalWinner, gameOver, finalWin } = state;
 
   const choices = ['Stone', 'Paper', 'Scissors'];
 
   const determineWinner = (p1, p2) => {
-    if (p1 === p2) return 'Tie';
+    if (p1 === p2) return "Tie";
     if (
       (p1 === 'Stone' && p2 === 'Scissors') ||
       (p1 === 'Scissors' && p2 === 'Paper') ||
@@ -97,7 +93,7 @@ const Game = () => {
       dispatch({ type: 'UPDATE_SCORE', payload: { winner: 'player2' } });
     }
 
-    const roundWinner = winner === 'Player 1' ? player1 : winner === 'Player 2' ? player2 : 'Tie';
+    const roundWinner = winner === 'Player 1' ? player1 : winner === 'Player 2' ? player2 : "Tie";
 
     dispatch({
       type: 'ADD_ROUND',
@@ -105,35 +101,45 @@ const Game = () => {
         roundNumber: round,
         player1Choice,
         player2Choice,
-        winner: roundWinner, // Save the winner's name or "Tie"
+        winner: roundWinner,
       },
     });
 
     if (round < 6) {
       dispatch({ type: 'INCREMENT_ROUND' });
     } else {
-      dispatch({ type: 'SET_FINAL_WINNER', payload: score.player1 === score.player2 ? 'Tie' : score.player1 > score.player2 ? player1 : player2 });
+      dispatch({ type: 'SET_FINAL_WINNER', payload: finalWinner });
     }
 
     dispatch({ type: 'SET_CHOICE', payload: { player: 'player1Choice', choice: null } });
     dispatch({ type: 'SET_CHOICE', payload: { player: 'player2Choice', choice: null } });
-  }, [player1Choice, player2Choice, round, score, player1, player2]);
-
-  const saveGame = useCallback(async () => {
-    const finalGameData = { player1, player2, rounds, finalWinner };
-    try {
-      await axios.post('http://localhost:5000/api/save-game', finalGameData);
-      toast.success('Game saved..')
-     } catch (error) {
-      toast.error('Error saving game:', error);
-    }
-  }, [player1, player2, rounds, finalWinner]);
+  }, [player1Choice, player2Choice, round, finalWinner, player1, player2]);
 
   useEffect(() => {
     if (gameOver) {
+      const saveGame = async () => {
+        let finalWinner1 = "";
+        if (score.player1 === score.player2) {
+          finalWinner1 = "Tie";
+        } else if (score.player1 > score.player2) {
+          finalWinner1 = player1;
+        } else if (score.player1 < score.player2) {
+          finalWinner1 = player2;
+        }
+
+        const finalGameData = { player1, player2, rounds, finalWinner: finalWinner1 };
+        dispatch({ type: 'SET_FINAL_WINNER', payload: finalWinner1 });
+        
+        try {
+          await axios.post('http://localhost:5000/api/save-game', finalGameData);
+          toast.success('Game saved..');
+        } catch (error) {
+          toast.error('Error saving game:', error);
+        }
+      };
       saveGame();
     }
-  }, [gameOver, saveGame]);
+  }, [gameOver, score, player1, player2, rounds]);
 
   const startNewGame = () => {
     dispatch({ type: 'RESET_GAME' });
@@ -141,7 +147,6 @@ const Game = () => {
 
   const handleChoiceSelection = (player, choice) => {
     if (!player1 || !player2) {
-      
       toast.error('Please fill in player names before making a choice!');
       return;
     }
@@ -154,10 +159,7 @@ const Game = () => {
 
   return (
     <div className="game-container">
-               <Toaster
-  position="top-center"
-  reverseOrder={false}
-/>
+      <Toaster position="top-center" reverseOrder={false} />
       <div className='history'>
         <Link className='btn btn-danger mt-2' to={'/history'}>Game History</Link>
       </div>
@@ -217,20 +219,18 @@ const Game = () => {
               <button className='btn btn-success' onClick={playRound}>
                 Play Round
               </button>
-               
             )}
-   
           </div>
         </>
       )}
 
       {gameOver && (
         <h2 className='text-center'>
-          {finalWinner === "Tie" ? (
+          {score.player1 === score.player2 ? (
             'The Game is a Tie!'
           ) : (
             <>
-              <span className='text-warning fw-bold fs-1'>{finalWinner}</span> Wins the Game!
+              <span className='text-warning fw-bold fs-1'>{finalWin}</span> Wins the Game!
             </>
           )}
         </h2>
