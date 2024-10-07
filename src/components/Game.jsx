@@ -131,7 +131,7 @@ const Game = () => {
         dispatch({ type: 'SET_FINAL_WINNER', payload: finalWinner1 });
         
         try {
-          await axios.post('http://localhost:5000/api/save-game', finalGameData);
+          await axios.post('https://sps-backend-fto8.onrender.com/api/save-game', finalGameData);
           toast.success('Game saved..');
         } catch (error) {
           toast.error('Error saving game:', error);

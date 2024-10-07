@@ -40,7 +40,7 @@ const GameHistory = () => {
   useEffect(() => {
     const fetchGames = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/games');
+        const response = await axios.get('https://sps-backend-fto8.onrender.com/api/games');
         console.log(response.data);
         
         // Dispatch success action with the games data
